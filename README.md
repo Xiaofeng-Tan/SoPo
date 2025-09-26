@@ -1,7 +1,7 @@
 # SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization
 This repository is the official implementation of "SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization" (NeruIPS 2025).
 
-[**Paper**](https://arxiv.org/abs/2412.05095) | [**Project Page**](https://sopo-motion.github.io/)
+[**Paper**](https://arxiv.org/abs/2412.05095) | [**Project Page**](https://xiaofeng-tan.github.io/projects/SoPo/)
 
 <p align="center"> Our Code will be released soon... 🏗️ 🚧 🔨</p>
 
