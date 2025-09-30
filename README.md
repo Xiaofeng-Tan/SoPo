@@ -7,9 +7,10 @@ This repository is the official implementation of "SoPo: Text-to-Motion Generati
 
 ## To-Do List
 - [x] Release early version: [**Paper**](https://arxiv.org/abs/2412.05095)
+- [ ] Release code for T2I:
+- [ ] Release code for T2M: 
 - [ ] Release final version
 - [ ] Release extended version
-- [ ] Release official code
 
 ## Acknowledgement
 
