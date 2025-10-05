@@ -24,10 +24,10 @@ This work is built on many amazing research works and open-source projects, than
 If you find this repository/work helpful in your research, please consider citing the paper and starring the repo ⭐.
 
 ```
-@article{tan2024sopo,
+@article{tan2025sopo,
   title={SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization},
   author={Tan, Xiaofeng and Wang, Hongsong and Geng, Xin and Zhou, Pan},
-  journal={arXiv preprint arXiv:2412.05095},
-  year={2024}
+  journal={Advances in Neural Information Processing Systems},
+  year={2025}
 }
 ```
