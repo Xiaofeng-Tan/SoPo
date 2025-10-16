@@ -26,7 +26,7 @@
 </div>
 
 <p>
-    TL;DR: How effectively can 
+    How effectively can 
     <span style="color: #84193E; font-weight: bold;">discriminative </span>
     model improve motion
     <span style="color: #84193E; font-weight: bold;"> generation </span> quality
@@ -35,7 +35,7 @@
 
 
 <p style="font-size: 1.0em; line-height: 1.6; border-left: 5px solid #007BFF; padding-left: 15px; background-color: #f7f9fc;">
-    <span style="font-weight: bold; color: #007BFF;">Our Answer:</span>
+    <span style="font-weight: bold; color: #007BFF;">TL;DR:</span>
     We propose <span style="font-weight: 900; color: #004D99; background-color: #DDEEFF; padding: 2px 4px; border-radius: 3px;">SoPo</span>, a semi-online preference optimization method, combining the strengths of online and offline direct preference optimization to overcome their individual shortcomings, delivering enhanced motion generation quality and preference alignment.
 </p>
 
