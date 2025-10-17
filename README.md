@@ -27,8 +27,6 @@
 
 How effectively can **discriminative** model improve motion **generation** quality *without any inference cost*?
 
-***
-
 > **TL;DR:** We propose **SoPo**, a *semi-online preference optimization* method, combining the strengths of online and offline direct preference optimization to overcome their individual shortcomings, delivering enhanced motion generation quality and preference alignment.
 
 <div align="center">
