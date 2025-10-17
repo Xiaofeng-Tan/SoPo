@@ -1,8 +1,16 @@
-<h1 align="center"><strong>SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization
-</strong></h1>
+<h1 align="center"><strong>SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization</strong></h1>
+<p align="center">
+  <a href="https://iccv2023.thecvf.com">
+    <img src="https://img.shields.io/badge/NeurIPS-2025-9065CA.svg?logo=ICCV" alt="ICCV 2023">
+  </a>
+  <a href="https://arxiv.org/abs/2412.05095">
+    <img src="https://img.shields.io/badge/Paper-PDF-yellow?style=flat&logo=arXiv&logoColor=yellow" alt="Paper PDF on arXiv">
+  </a>
+  <a href="https://xiaofeng-tan.github.io/projects/SoPo/">
+    <img src="https://img.shields.io/badge/Project-Page-green?style=flat&logo=Google%20chrome&logoColor=green" alt="Project Page">
+  </a>
+</p>
   <p align="center">
-      <strong><span style="color: red;">NeurIPS 2025</span></strong>
-    <br>
    <a href='https://xiaofeng-tan.github.io/' target='_blank'>Xiaofeng Tan<sup>1,2</sup></a>&emsp;
    Hongsong Wang*<sup>1,2</sup>&emsp;
    Xin Geng<sup>1,2</sup>&emsp;
@@ -16,12 +24,6 @@
   </p>
 </p>
 
-<p align="center">
-  <a href='https://arxiv.org/abs/2412.05095'>
-    <img src='https://img.shields.io/badge/Paper-PDF-yellow?style=flat&logo=arXiv&logoColor=yellow'></a>
-  <a href='https://xiaofeng-tan.github.io/projects/SoPo/'>
-    <img src='https://img.shields.io/badge/Project-Page-green?style=flat&logo=Google%20chrome&logoColor=green'></a>
-</p>
 
 </div>
 
