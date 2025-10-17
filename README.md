@@ -1,4 +1,18 @@
 <h1 align="center"><strong>SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization</strong></h1>
+  <p align="center">
+   <a href='https://xiaofeng-tan.github.io/' target='_blank'>Xiaofeng Tan<sup>1,2</sup></a>&emsp;
+   Hongsong Wang*<sup>1,2</sup>&emsp;
+   Xin Geng<sup>1,2</sup>&emsp;
+   Pan Zhou<sup>3</sup>&emsp;
+    <br>
+    <sup>1</sup>Southeast University&emsp;
+    <sup>2</sup>PALM Lab @ SEU &emsp;
+    <sup>2</sup>Singapore Management University     
+    <br>
+    *Indicates Corresponding Author
+  </p>
+</p>
+
 <p align="center">
   <a href="https://iccv2023.thecvf.com">
     <img src="https://img.shields.io/badge/NeurIPS-2025-9065CA.svg?logo=ICCV" alt="ICCV 2023">
@@ -10,20 +24,6 @@
     <img src="https://img.shields.io/badge/Project-Page-green?style=flat&logo=Google%20chrome&logoColor=green" alt="Project Page">
   </a>
 </p>
-  <p align="center">
-   <a href='https://xiaofeng-tan.github.io/' target='_blank'>Xiaofeng Tan<sup>1,2</sup></a>&emsp;
-   Hongsong Wang*<sup>1,2</sup>&emsp;
-   Xin Geng<sup>1,2</sup>&emsp;
-   Pan Zhou<sup>3</sup>&emsp;
-    <br>
-    <sup>1</sup>Southeast University&emsp;
-    <sup>2</sup>PALM Lab &emsp;
-    <sup>2</sup>Singapore Management University     
-    <br>
-    *Indicates Corresponding Author
-  </p>
-</p>
-
 
 </div>
 
