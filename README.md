@@ -14,8 +14,8 @@
 </p>
 
 <p align="center">
-  <a href="https://iccv2023.thecvf.com">
-    <img src="https://img.shields.io/badge/NeurIPS-2025-9065CA.svg?logo=ICCV" alt="ICCV 2023">
+  <a href="https://neurips.cc/virtual/2025/poster/118773">
+    <img src="https://img.shields.io/badge/NeurIPS-2025-9065CA" alt="NeurIPS 2025">
   </a>
   <a href="https://arxiv.org/abs/2412.05095">
     <img src="https://img.shields.io/badge/Paper-PDF-yellow?style=flat&logo=arXiv&logoColor=yellow" alt="Paper PDF on arXiv">
