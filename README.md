@@ -41,7 +41,7 @@ How effectively can **discriminative** model improve motion **generation** quali
 
 ## 📆 Plan
 - [x] Release early version.
-- [ ] Release final version.
+- [x] Release [final version](https://arxiv.org/abs/2412.05095).
 - [ ] Release code for T2M: 
   - [x] Release environment guidance.
   - [ ] Release evaluation code.
