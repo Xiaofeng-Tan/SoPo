@@ -77,7 +77,7 @@ bash prepare/download_tmr.sh
 
 For SoPo-optimized weights, download from HuggingFace:
 ```bash
-git clone https://huggingface.co/ModelsWeights/SoPo ./pretrained_sopo
+huggingface-cli download ModelsWeights/SoPo --local-dir ./save/sopo_humanml3d/
 ```
 
 **Option 2: Manual Download**
