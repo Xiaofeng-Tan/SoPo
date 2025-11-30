@@ -23,6 +23,9 @@
   <a href="https://xiaofeng-tan.github.io/projects/SoPo/">
     <img src="https://img.shields.io/badge/Project-Page-green?style=flat&logo=Google%20chrome&logoColor=green" alt="Project Page">
   </a>
+  <a href="https://huggingface.co/ModelsWeights/SoPo">
+    <img src="https://img.shields.io/badge/Model-HuggingFace-FFD21E?style=flat&logo=huggingface&logoColor=black" alt="HuggingFace Models">
+  </a>
 </p>
 
 </div>
@@ -36,20 +39,54 @@ How effectively can **discriminative** model improve motion **generation** quali
 </div>
 
 ## 📣 News
+- **[2025/11]** We release code for T2M, including evaluation, inference, and training.
 - **[2025/09]** SoPo has been officially accepted by *NeurIPS 2025*! 🎉
 - **[2024/12]** The paper has been publicly released.
 
 ## 📆 Plan
 - [x] Release early version.
 - [x] Release [final version](https://arxiv.org/abs/2412.05095).
-- [ ] Release code for T2M: 
+- [x] Release code for T2M: 
   - [x] Release environment guidance.
-  - [ ] Release evaluation code.
-  - [ ] Release inference code.
-  - [ ] Release training code.
-  - [ ] Release checkpoints.
+  - [x] Release evaluation code.
+  - [x] Release inference code.
+  - [x] Release training code.
+  - [x] Release checkpoints.
 - [ ] Release code for T2I.
 - [ ] Release extended version.
+
+## Models
+
+We provide comprehensive pre-trained models, reward models (TMR), and optimized weights (SoPo) to facilitate reproduction and extension of our work. The following table summarizes the available models and their respective access methods:
+
+| Model Category | Model Name | Description | Access Method | Local Path |
+|:---|:---|:---|:---|:---|
+| **Diffusion Model** | HumanML-Trans-Dec-512-BERT | Pre-trained motion diffusion model (20× faster inference) | [Google Drive](https://drive.google.com/file/d/1z5IW5Qa9u9UdkckKylkcSXCwIYgLPhIC/view?usp=sharing) | `save/humanml_enc_512_50steps/model000750000.pt` |
+| **Reward Model (TMR)** | TMR-HumanML3D | Text-Motion Retrieval model for reward scoring | [Download Script](./prepare/download_tmr.sh) | `./pretrained_tmr/tmr_humanml3d_guoh3dfeats` |
+| **Optimized Weights** | SoPo-HumanML3D | SoPo-optimized diffusion weights | [HuggingFace Hub](https://huggingface.co/ModelsWeights/SoPo) | `save/sopo_humanml3d/` |
+
+**Important Note on KIT-ML Compatibility:** Due to the different motion representations employed in the text-to-motion generation and text-motion retrieval tasks for the KIT-ML dataset, the TMR model (for text-motion retrieval tasks) trained on KIT dataset cannot be directly applied to KIT-ML t2m generation fine-tuning. For KIT-ML post-training, we recommend adopting the reward model proposed in [ReAlign](https://github.com/wengwanjiang/ReAlign) for preference optimization.
+
+
+**Option 1: Automatic Download (Recommended)**
+
+For TMR reward models, use the provided download script:
+```bash
+bash prepare/download_tmr.sh
+```
+
+For SoPo-optimized weights, download from HuggingFace:
+```bash
+git clone https://huggingface.co/ModelsWeights/SoPo ./pretrained_sopo
+```
+
+**Option 2: Manual Download**
+
+- **Diffusion Model**: Download from [Google Drive](https://drive.google.com/file/d/1z5IW5Qa9u9UdkckKylkcSXCwIYgLPhIC/view?usp=sharing), then extract to `save/humanml_enc_512_50steps/`
+- **TMR Models**: Execute `bash prepare/download_tmr.sh` to fetch both HumanML3D and KIT-ML variants
+- **SoPo Weights**: Access via [HuggingFace Hub](https://huggingface.co/ModelsWeights/SoPo) for the latest optimized checkpoints
+
+
 
 ## Setup
 
@@ -64,8 +101,8 @@ sudo apt install ffmpeg
 
 Setup conda env:
 ```shell
-conda env create -f environment.yml
-conda activate mdm
+conda env create -f sopo_environment.yml
+conda activate sopo
 python -m spacy download en_core_web_sm
 pip install git+https://github.com/openai/CLIP.git
 ```
@@ -83,22 +120,70 @@ bash prepare/download_t2m_evaluators.sh
 **HumanML3D** - Follow the instructions in [HumanML3D](https://github.com/EricGuo5513/HumanML3D.git),
 then copy the result dataset to our repository:
 
-```shell
-cp -r ../HumanML3D/HumanML3D ./dataset/HumanML3D
-```
 
-**KIT** - Download from [Here](https://github.com/EricGuo5513/HumanML3D.git) (no processing needed this time) and the place result in `./dataset/KIT-ML`
-</details>
+**KIT-ML** - Download from [Here](https://github.com/EricGuo5513/HumanML3D.git) (no processing needed this time) and place the result in `./dataset/KIT-ML`
 
 ### 3. Download the pretrained models
 
-Download the model(s) you wish to use, then unzip and place them in `./save/`. 
+Use the model download instructions provided in the **Models** section above.
 
-[NEW!] [humanml_trans_dec_512_bert-50steps](https://drive.google.com/file/d/1z5IW5Qa9u9UdkckKylkcSXCwIYgLPhIC/view?usp=sharing) - Runs 20X faster with improved precision!
+### 4. Verify TMR Setup
 
-### 4. Setup TMR
+To verify that the TMR reward model is correctly set up, run:
 
+```bash
+python text_motion_sim.py
+```
 
+## Quick Start
+
+### Training
+
+To train the SoPo model, use the following command:
+
+```bash
+python -m train.train_sopo --save_dir save/sopo_experiment --dataset humanml
+```
+
+For more training options and configurations, see the training scripts in `train/`.
+
+### Inference
+
+#### Generate from test set prompts
+
+Generate multiple motions from the test set prompts:
+
+```shell
+python -m sample.generate --model_path ./save/humanml_trans_enc_512/model000200000.pt --num_samples 10 --num_repetitions 3
+```
+
+#### Generate from text file
+
+Generate motions from a file containing multiple text prompts:
+
+```shell
+python -m sample.generate --model_path ./save/humanml_trans_enc_512/model000200000.pt --input_text ./assets/example_text_prompts.txt
+```
+
+#### Generate from a single text prompt
+
+Generate motion from a single custom text description:
+
+```shell
+python -m sample.generate --model_path ./save/humanml_trans_enc_512/model000200000.pt --text_prompt "the person walked forward and is picking up his toolbox."
+```
+
+### Evaluation
+
+To evaluate the model on standard benchmarks, run:
+
+```shell
+python -m eval.eval_humanml --model_path ./save/humanml_trans_enc_512/model000475000.pt
+```
+
+### Visualization
+
+For motion visualization and rendering, please refer to the official [MotionLCM](https://github.com/Dai-Wenxun/MotionLCM) repository for detailed instructions.
 
 ## Acknowledgement
 
@@ -115,7 +200,7 @@ If you find this repository/work helpful in your research, please consider citin
 @article{tan2025sopo,
   title={SoPo: Text-to-Motion Generation Using Semi-Online Preference Optimization},
   author={Tan, Xiaofeng and Wang, Hongsong and Geng, Xin and Zhou, Pan},
-  journal={Advances in Neural Information Processing Systems},
+  conference={Advances in Neural Information Processing Systems},
   year={2025}
 }
 ```
