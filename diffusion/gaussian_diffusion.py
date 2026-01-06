@@ -16,6 +16,8 @@ from copy import deepcopy
 from diffusion.nn import mean_flat, sum_flat
 from diffusion.losses import normal_kl, discretized_gaussian_log_likelihood
 from data_loaders.humanml.scripts import motion_process
+from src_tmr.data.collate import collate_x_dict
+from src_tmr.model.tmr import get_score_matrix, get_score_vector
 
 def get_named_beta_schedule(schedule_name, num_diffusion_timesteps, scale_betas=1.):
     """
@@ -612,6 +614,7 @@ class GaussianDiffusion:
         cond_fn_with_grad=False,
         dump_steps=None,
         const_noise=False,
+        progress_desc=None,
     ):
         """
         Generate samples from the model.
@@ -656,6 +659,7 @@ class GaussianDiffusion:
             randomize_class=randomize_class,
             cond_fn_with_grad=cond_fn_with_grad,
             const_noise=const_noise,
+            progress_desc=progress_desc,
         )):
             if dump_steps is not None and i in dump_steps:
                 dump.append(deepcopy(sample["sample"]))
@@ -680,6 +684,7 @@ class GaussianDiffusion:
         randomize_class=False,
         cond_fn_with_grad=False,
         const_noise=False,
+        progress_desc=None,
     ):
         """
         Generate samples from the model and yield intermediate samples from
@@ -710,7 +715,7 @@ class GaussianDiffusion:
             # Lazy import so that we don't depend on tqdm.
             from tqdm.auto import tqdm
 
-            indices = tqdm(indices)
+            indices = tqdm(indices, desc=progress_desc, leave=False)
 
         for i in indices:
             t = th.tensor([i] * shape[0], device=device)
@@ -973,7 +978,7 @@ class GaussianDiffusion:
             # Lazy import so that we don't depend on tqdm.
             from tqdm.auto import tqdm
 
-            indices = tqdm(indices)
+            indices = tqdm(indices, desc=progress_desc, leave=False)
 
         for i in indices:
             t = th.tensor([i] * shape[0], device=device)
@@ -1166,7 +1171,7 @@ class GaussianDiffusion:
             # Lazy import so that we don't depend on tqdm.
             from tqdm.auto import tqdm
 
-            indices = tqdm(indices)
+            indices = tqdm(indices, desc=progress_desc, leave=False)
 
         old_out = None
 
@@ -1228,29 +1233,181 @@ class GaussianDiffusion:
         output = th.where((t == 0), decoder_nll, kl)
         return {"output": output, "pred_xstart": out["pred_xstart"]}
 
-    def training_losses(self, model, x_start, t, model_kwargs=None, noise=None, dataset=None):
-        """
-        Compute training losses for a single timestep.
+    def m_m_sim(self, motion1, motion2, tm_model, normalizer, device):
+        #print(motion.shape)
+        motion_1_ = motion1.squeeze(2)
+        motion_1_ = motion_1_.permute(0, 2, 1)
+        motion_2_ = motion2.squeeze(2)
+        motion_2_ = motion_2_.permute(0, 2, 1)
+        motion_1_, motion_2_ = normalizer(motion_1_), normalizer(motion_2_)
+        motion_1_, motion_2_ = motion_1_.to(torch.device(device)),  motion_2_.to(torch.device(device))
+        motion_x_dict_1 = {"x": motion_1_, "length": [[len(motion_1_)]*motion_1_.shape[0]], "mask": torch.ones((motion_1_.shape[0], motion_1_.shape[1]), dtype=torch.bool).to(device)}
+        motion_x_dict_2 = {"x": motion_2_, "length": [[len(motion_2_)]*motion_2_.shape[0]], "mask": torch.ones((motion_2_.shape[0], motion_2_.shape[1]), dtype=torch.bool).to(device)}
+        with torch.inference_mode():
+            # motion -> latent
+            #motion_x_dict = collate_x_dict([motion_x_dict])
+            lat_m_1 = tm_model.encode(motion_x_dict_1, sample_mean=True)
+            lat_m_2 = tm_model.encode(motion_x_dict_2, sample_mean=True)
+            score = get_score_vector(lat_m_1, lat_m_2)
+            #print(score_1.shape)
+        #score_str = f"{score:.3}"
+        #logger.info(
+        #    f"The similariy score s (0 <= s <= 1) between the text and the motion is: {score_str}"
+        #)
+        return score
 
-        :param model: the model to evaluate loss on.
-        :param x_start: the [N x C x ...] tensor of inputs.
-        :param t: a batch of timestep indices.
-        :param model_kwargs: if not None, a dict of extra keyword arguments to
-            pass to the model. This can be used for conditioning.
-        :param noise: if specified, the specific Gaussian noise to try to remove.
-        :return: a dict with the key "loss" containing a tensor of shape [N].
-                 Some mean or variance settings may also have other keys.
-        """
+    def t_m_sim_kit(self, text, motion1, motion2, tm_model, text_model, normalizer, device):
+        motion1, motion2 = motion1.to(torch.device(device)),  motion2.to(torch.device(device))
+        motion_x_dict_1 = {"x": motion1, "length": [[len(motion1)]*motion1.shape[0]], "mask": torch.ones((motion1.shape[0], motion1.shape[1]), dtype=torch.bool).to(device)}
+        motion_x_dict_2 = {"x": motion2, "length": [[len(motion2)]*motion2.shape[0]], "mask": torch.ones((motion2.shape[0], motion2.shape[1]), dtype=torch.bool).to(device)}
+        with torch.inference_mode():
+            # motion -> latent
+            #motion_x_dict = collate_x_dict([motion_x_dict])
+            lat_m_1 = tm_model(motion1, torch.ones((motion1.shape[0], motion1.shape[1]), dtype=torch.bool).to(device))
+            lat_m_2 = tm_model(motion2, torch.ones((motion2.shape[0], motion2.shape[1]), dtype=torch.bool).to(device))
+            print("motion encode OK!")
+            # text -> latent
+            #exit()
+            #print('0')
+            text_emb = text_model(text)
+            text_x_dict = collate_x_dict(text_emb)
+            #print("2")
+            #print(text_x_dict.keys())
+            #exit()
+            # text_x_dict = collate_x_dict(text_model([text]))
+            lat_t = tm_model.encode(text_x_dict, sample_mean=True)
+            #print("text encode OK!")
+            #print(lat_t.shape)
+            #exit()
+            score_1, score_2 = get_score_vector(lat_t, lat_m_1), get_score_vector(lat_t, lat_m_2)
+            #print(score_1.shape)
+        #score_str = f"{score:.3}"
+        #logger.info(
+        #    f"The similariy score s (0 <= s <= 1) between the text and the motion is: {score_str}"
+        #)
+        return score_1, score_2
 
-        # enc = model.model._modules['module']
-        enc = model.model
+    def t_m_sim(self, text, motion1, motion2, tm_model, text_model, normalizer, device):
+        motion1, motion2 = normalizer(motion1), normalizer(motion2)
+        motion1, motion2 = motion1.to(torch.device(device)),  motion2.to(torch.device(device))
+        motion_x_dict_1 = {"x": motion1, "length": [[len(motion1)]*motion1.shape[0]], "mask": torch.ones((motion1.shape[0], motion1.shape[1]), dtype=torch.bool).to(device)}
+        motion_x_dict_2 = {"x": motion2, "length": [[len(motion2)]*motion2.shape[0]], "mask": torch.ones((motion2.shape[0], motion2.shape[1]), dtype=torch.bool).to(device)}
+        with torch.inference_mode():
+            # motion -> latent
+            #motion_x_dict = collate_x_dict([motion_x_dict])
+            lat_m_1 = tm_model.encode(motion_x_dict_1, sample_mean=True)
+            lat_m_2 = tm_model.encode(motion_x_dict_2, sample_mean=True)
+            #print("motion encode OK!")
+            # text -> latent
+            #exit()
+            #print('0')
+            text_emb = text_model(text)
+            text_x_dict = collate_x_dict(text_emb)
+            #print("2")
+            #print(text_x_dict.keys())
+            #exit()
+            # text_x_dict = collate_x_dict(text_model([text]))
+            lat_t = tm_model.encode(text_x_dict, sample_mean=True)
+            #print("text encode OK!")
+            #print(lat_t.shape)
+            #exit()
+            score_1, score_2 = get_score_vector(lat_t, lat_m_1), get_score_vector(lat_t, lat_m_2)
+            #print(score_1.shape)
+        #score_str = f"{score:.3}"
+        #logger.info(
+        #    f"The similariy score s (0 <= s <= 1) between the text and the motion is: {score_str}"
+        #)
+        return score_1, score_2
+
+    def online_generate(self, model, x_start, t, model_kwargs=None, noise=None, dataset=None, text_model = None, t_m_model = None, normalizer = None):
+        sample_fn = self.p_sample_loop
+        sample_1 = sample_fn(
+            model.model,
+            shape = x_start.shape,
+            # (args.batch_size, model.njoints, model.nfeats, n_frames),  # BUG FIX - this one caused a mismatch between training and inference
+            #(args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
+            clip_denoised=False,
+            model_kwargs=model_kwargs,
+            skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+            init_image=None,
+            progress=True,
+            dump_steps=None,
+            noise=None,
+            const_noise=False,
+            progress_desc="Generating sample 1",
+        )
+        sample_2 = sample_fn(
+            model.model,
+            shape = x_start.shape,
+            # (args.batch_size, model.njoints, model.nfeats, n_frames),  # BUG FIX - this one caused a mismatch between training and inference
+            #(args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
+            clip_denoised=False,
+            model_kwargs=model_kwargs,
+            skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+            init_image=None,
+            progress=True,
+            dump_steps=None,
+            noise=None,
+            const_noise=False,
+            progress_desc="Generating sample 2",
+        )
+        sample_1_ = sample_1.squeeze(2)
+        sample_1_ = sample_1_.permute(0, 2, 1)
+        sample_2_ = sample_2.squeeze(2)
+        sample_2_ = sample_2_.permute(0, 2, 1)
+        score_1, score_2 = self.t_m_sim(model_kwargs['y']['text'], sample_1_, sample_2_, t_m_model, text_model, normalizer, x_start.device)
+        return score_1, score_2, sample_1, sample_2
+
+
+    def online_generate_kit(self, model, x_start, t, model_kwargs=None, noise=None, dataset=None, text_model = None, t_m_model = None, normalizer = None):
+            sample_fn = self.p_sample_loop
+            sample_1 = sample_fn(
+                model.model,
+                shape = x_start.shape,
+                # (args.batch_size, model.njoints, model.nfeats, n_frames),  # BUG FIX - this one caused a mismatch between training and inference
+                #(args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
+                clip_denoised=False,
+                model_kwargs=model_kwargs,
+                skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+                init_image=None,
+                progress=False,
+                dump_steps=None,
+                noise=None,
+                const_noise=False,
+            )
+            sample_2 = sample_fn(
+                model.model,
+                shape = x_start.shape,
+                # (args.batch_size, model.njoints, model.nfeats, n_frames),  # BUG FIX - this one caused a mismatch between training and inference
+                #(args.batch_size, model.njoints, model.nfeats, max_frames),  # BUG FIX
+                clip_denoised=False,
+                model_kwargs=model_kwargs,
+                skip_timesteps=0,  # 0 is the default value - i.e. don't skip any step
+                init_image=None,
+                progress=False,
+                dump_steps=None,
+                noise=None,
+                const_noise=False,
+            )
+            sample_1_ = sample_1.squeeze(2)
+            sample_1_ = sample_1_.permute(0, 2, 1)
+            sample_2_ = sample_2.squeeze(2)
+            sample_2_ = sample_2_.permute(0, 2, 1)
+            score_1, score_2 = self.t_m_sim_kit(model_kwargs['y']['text'], sample_1_, sample_2_, t_m_model, text_model, normalizer, x_start.device)
+            return score_1, score_2, sample_1, sample_2
+        
+    def compute_losses(self, model, x_start, t, model_kwargs=None, noise=None, dataset=None):
+        # Handle both wrapped model (has .model attribute) and raw model
+        if hasattr(model, 'model'):
+            enc = model.model
+        else:
+            enc = model
         mask = model_kwargs['y']['mask']
         get_xyz = lambda sample: enc.rot2xyz(sample, mask=None, pose_rep=enc.pose_rep, translation=enc.translation,
                                              glob=enc.glob,
                                              # jointstype='vertices',  # 3.4 iter/sec # USED ALSO IN MotionCLIP
                                              jointstype='smpl',  # 3.4 iter/sec
                                              vertstrans=False)
-
         if model_kwargs is None:
             model_kwargs = {}
         if noise is None:
@@ -1354,6 +1511,68 @@ class GaussianDiffusion:
             raise NotImplementedError(self.loss_type)
 
         return terms
+    
+    def training_losses(self, model, ref_model, x_start, t, model_kwargs=None, noise=None, dataset=None, text_model = None, t_m_model = None, normalizer = None, eval_wrapper = None):
+        """
+        Compute training losses for a single timestep.
+
+        :param model: the model to evaluate loss on.
+        :param x_start: the [N x C x ...] tensor of inputs.
+        :param t: a batch of timestep indices.
+        :param model_kwargs: if not None, a dict of extra keyword arguments to
+            pass to the model. This can be used for conditioning.
+        :param noise: if specified, the specific Gaussian noise to try to remove.
+        :return: a dict with the key "loss" containing a tensor of shape [N].
+                 Some mean or variance settings may also have other keys.
+        """
+        with torch.no_grad():
+            score_1, score_2, sample_1, sample_2 = self.online_generate(model, x_start, t, model_kwargs, noise, dataset, text_model, t_m_model, normalizer)
+            #score_3, score_4, sample_3, sample_4 = self.online_generate(model, x_start, t, model_kwargs, noise, dataset, text_model, t_m_model, normalizer)
+
+        score_mm_1, score_mm_2 = self.m_m_sim(x_start, sample_1, t_m_model, normalizer, x_start.device), self.m_m_sim(x_start, sample_2, t_m_model, normalizer, x_start.device)
+        #score_mm_3, score_mm_4 = self.m_m_sim(x_start, sample_3, t_m_model, normalizer, x_start.device), self.m_m_sim(x_start, sample_4, t_m_model, normalizer, x_start.device)
+
+        for param in model.model.parameters():
+            param.requires_grad = True
+        losing_score_1 = torch.min(score_1, score_2)
+        losing_score = torch.min(score_1, score_2)
+        #losing_score_2 = torch.min(score_3, score_4)
+        #losing_score = torch.min(losing_score_1, losing_score_2)
+        
+        probability = torch.min(score_mm_1, score_mm_2)
+        #probability_1 = torch.min(score_mm_1, score_mm_2)
+        #probability_2 = torch.min(score_mm_3, score_mm_4)
+        #probability = torch.min(probability_1, probability_2)
+
+        score_1, score_2 = score_1.unsqueeze(1).unsqueeze(2).unsqueeze(3), score_2.unsqueeze(1).unsqueeze(2).unsqueeze(3) 
+        #score_3, score_4 = score_3.unsqueeze(1).unsqueeze(2).unsqueeze(3), score_4.unsqueeze(1).unsqueeze(2).unsqueeze(3) 
+        #score_mm_1, score_mm_2 = score_mm_1.unsqueeze(1).unsqueeze(2).unsqueeze(3), score_mm_2.unsqueeze(1).unsqueeze(2).unsqueeze(3) 
+        mask_l = torch.lt(losing_score, 0.45)
+        #print(sum(mask_l))
+        #exit()
+        #print(score_2)
+        #losing_score = losing_score.unsqueeze(1).unsqueeze(2).unsqueeze(3)
+        #condition = [score_1 == losing_score, score_2 == losing_score,score_3 == losing_score, score_4 == losing_score]
+        #sample = [sample_1, sample_2, sample_3, sample_4]
+        #losing_sample = torch.zeros_like(sample_1)
+        #for i in range(len(condition)):
+        #    mask = condition[i].expand(-1, 263, -1, 196)
+            #print(mask.shape, sample[i].shape, losing_sample.shape)
+        #    losing_sample += mask * sample[i]
+        losing_sample = torch.where(score_1 <= score_2, sample_1, sample_2)
+        loss_l = self.compute_losses(model, losing_sample, t, model_kwargs, noise, dataset)
+        #loss_w = self.compute_losses(model, x_start, t, model_kwargs, noise, dataset)
+        loss_ref_w = self.compute_losses(ref_model, x_start, t, model_kwargs, noise, dataset)
+        loss_ref_l = self.compute_losses(ref_model, losing_sample, t, model_kwargs, noise, dataset)
+        loss = {}
+        l = self.compute_losses(model, x_start, t, model_kwargs, noise, dataset)
+        loss['rot_mse'] = -torch.log(torch.sigmoid(-((2-probability)* (l['rot_mse'] -loss_ref_w['rot_mse']) - mask_l * (loss_l['rot_mse'] - loss_ref_l['rot_mse']))))
+        #loss['rot_mse'] = -torch.log(torch.sigmoid(-(l['rot_mse'] - mask_l * loss_l['rot_mse']))) + torch.log(l['rot_mse'])
+        #loss['rot_mse'] = -torch.log(torch.sigmoid(-(l['rot_mse'] - mask_l * loss_l['rot_mse']))) +  l['rot_mse']
+        #loss['rot_mse'] = -torch.log(torch.sigmoid(-(l['rot_mse'] - mask_l * loss_l['rot_mse'])))
+
+        loss['loss'] = loss['rot_mse']
+        return loss
 
     def fc_loss_rot_repr(self, gt_xyz, pred_xyz, mask):
         def to_np_cpu(x):

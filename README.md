@@ -39,6 +39,7 @@ How effectively can **discriminative** model improve motion **generation** quali
 </div>
 
 ## 📣 News
+- **[2026/01]** Optimized project structure
 - **[2025/11]** We release code for T2M, including evaluation, inference, and training.
 - **[2025/09]** SoPo has been officially accepted by *NeurIPS 2025*! 🎉
 - **[2024/12]** The paper has been publicly released.
@@ -88,6 +89,54 @@ huggingface-cli download ModelsWeights/SoPo --local-dir ./save/sopo_humanml3d/
 
 
 
+## Project Structure
+
+After completing the setup, your project directory should look like this:
+
+```
+motion-diffusion-model/
+├── assets/                     # Static assets and example files
+├── body_models/               # SMPL body model files
+├── configs/                   # Configuration files
+├── data_loaders/             # Data loading utilities
+├── dataset/                  # Dataset directory
+│   ├── HumanML3D/           # HumanML3D dataset
+│   │   ├── annotations_humanml3d/  # Text annotations
+│   │   └── motions_guoh3dfeats/    # Motion features
+│   └── KIT-ML/              # KIT-ML dataset
+├── diffusion/               # Diffusion model implementation
+├── eval/                    # Evaluation scripts
+├── glove/                   # GloVe embeddings
+├── model/                   # Model definitions and checkpoints
+│   ├── cfg_sampler.py      # Configuration sampler
+│   ├── mdm.py              # Main diffusion model
+│   ├── rotation2xyz.py     # Rotation utilities
+│   ├── smpl.py             # SMPL model interface
+│   └── models/             # Pre-trained model files
+├── outputs/                 # Generated outputs
+├── prepare/                 # Setup and download scripts
+├── pretrained_tmr/         # TMR reward models
+│   └── tmr_humanml3d_guoh3dfeats/
+├── sample/                  # Sampling and generation scripts
+├── save/                    # Training checkpoints and results
+│   ├── humanml_enc_512_50steps/  # Pre-trained diffusion model
+│   └── sopo_humanml3d/          # SoPo-optimized weights
+├── src_tmr/                # TMR source code
+├── stats/                   # Statistical data
+├── train/                   # Training scripts
+├── utils/                   # Utility functions
+├── visualize/              # Visualization tools
+├── sopo_environment.yml    # Conda environment file
+└── README.md               # This file
+```
+
+**Key Directories:**
+- `dataset/`: Contains all training and evaluation datasets
+- `model/`: Unified model definitions and checkpoints (merged from previous `models/`)
+- `save/`: Training outputs and model checkpoints
+- `pretrained_tmr/`: TMR reward models for preference optimization
+- `sample/`: Scripts for motion generation and sampling
+
 ## Setup
 
 ### 1. Setup environment
@@ -120,8 +169,18 @@ bash prepare/download_t2m_evaluators.sh
 **HumanML3D** - Follow the instructions in [HumanML3D](https://github.com/EricGuo5513/HumanML3D.git),
 then copy the result dataset to our repository:
 
+```bash
+# After processing HumanML3D, copy to our dataset directory
+cp -r /path/to/HumanML3D ./dataset/
+```
+
+The HumanML3D dataset should be placed in `./dataset/HumanML3D/` with the following structure:
+- `annotations_humanml3d/`: Text annotations and metadata
+- `motions_guoh3dfeats/`: Processed motion features
 
 **KIT-ML** - Download from [Here](https://github.com/EricGuo5513/HumanML3D.git) (no processing needed this time) and place the result in `./dataset/KIT-ML`
+
+**Note:** The dataset directory has been reorganized for better structure. All datasets are now centralized under `./dataset/` directory.
 
 ### 3. Download the pretrained models
 

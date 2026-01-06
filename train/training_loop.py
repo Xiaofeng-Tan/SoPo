@@ -18,6 +18,18 @@ from diffusion.resample import create_named_schedule_sampler
 from data_loaders.humanml.networks.evaluator_wrapper import EvaluatorMDMWrapper
 from eval import eval_humanml, eval_humanact12_uestc
 from data_loaders.get_data import get_dataset_loader
+from omegaconf import DictConfig
+import logging
+import hydra
+from src_tmr import prepare  # noqa
+import torch
+import numpy as np
+from src_tmr.config import read_config
+from src_tmr.load import load_model_from_cfg
+from hydra.utils import instantiate
+from pytorch_lightning import seed_everything
+from src_tmr.data.collate import collate_x_dict
+from src_tmr.model.tmr import get_score_matrix
 
 
 # For ImageNet experiments, this was a good default value.
@@ -27,11 +39,14 @@ INITIAL_LOG_LOSS_SCALE = 20.0
 
 
 class TrainLoop:
-    def __init__(self, args, train_platform, model, diffusion, data):
+    def __init__(self, args, train_platform, model, ref_model, diffusion, data):
         self.args = args
         self.dataset = args.dataset
         self.train_platform = train_platform
         self.model = model
+        self.ref_model = ref_model
+        for param in self.ref_model.parameters():
+            param.requires_grad = False
         self.diffusion = diffusion
         self.cond_mode = model.cond_mode
         self.data = data
@@ -99,6 +114,19 @@ class TrainLoop:
             }
         self.use_ddp = False
         self.ddp_model = self.model
+        self._load_T_M()
+        
+    def _load_T_M(self):
+        run_dir = './outputs/tmr_humanml3d_guoh3dfeats'
+        ckpt_name = 'last'
+        cfg = read_config(run_dir)
+        seed_everything(cfg.seed)
+        logger.info("Loading the text model")
+        self.text_model = instantiate(cfg.data.text_to_token_emb, device=self.device)
+        logger.info("Loading the model")
+        self.t_m_model = load_model_from_cfg(cfg, ckpt_name, eval_mode=True, device=self.device)
+        self.normalizer = instantiate(cfg.data.motion_loader.normalizer)
+        #motion = torch.from_numpy(np.load(npy_path)).to(torch.float)
 
     def _load_and_sync_parameters(self):
         resume_checkpoint = find_resume_checkpoint() or self.resume_checkpoint
@@ -125,7 +153,8 @@ class TrainLoop:
             self.opt.load_state_dict(state_dict)
 
     def run_loop(self):
-
+        #print(self.model)
+        #exit()
         for epoch in range(self.num_epochs):
             print(f'Starting epoch {epoch}')
             for motion, cond in tqdm(self.data):
@@ -219,14 +248,21 @@ class TrainLoop:
             micro_cond = cond
             last_batch = (i + self.microbatch) >= batch.shape[0]
             t, weights = self.schedule_sampler.sample(micro.shape[0], dist_util.dev())
-
+            #print(batch)
+            #exit()
             compute_losses = functools.partial(
                 self.diffusion.training_losses,
                 self.ddp_model,
+                self.ref_model,
                 micro,  # [bs, ch, image_size, image_size]
                 t,  # [bs](int) sampled timesteps
                 model_kwargs=micro_cond,
-                dataset=self.data.dataset
+                dataset=self.data.dataset,
+                text_model= self.text_model,
+                t_m_model = self.t_m_model,
+                normalizer = self.normalizer,
+                eval_wrapper = self.eval_wrapper,
+                #ref_model = self.ref_model,
             )
 
             if last_batch or not self.use_ddp:

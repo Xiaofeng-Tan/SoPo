@@ -23,8 +23,6 @@ def main():
 
     if args.save_dir is None:
         raise FileNotFoundError('save_dir was not specified.')
-    elif os.path.exists(args.save_dir) and not args.overwrite:
-        raise FileExistsError('save_dir [{}] already exists.'.format(args.save_dir))
     elif not os.path.exists(args.save_dir):
         os.makedirs(args.save_dir)
     args_path = os.path.join(args.save_dir, 'args.json')

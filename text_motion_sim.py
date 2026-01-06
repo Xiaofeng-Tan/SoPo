@@ -83,7 +83,7 @@ if __name__ == "__main__":
     text = 'A guy is getting ready to do a backflip, but he fails and lands on the floor.'
     device = 'cuda'
     run_dir = './outputs/tmr_humanml3d_guoh3dfeats'
-    npy_path = './datasets/motions/humanml3d/new_joint_vecs/000001.npy'
+    npy_path = './dataset/HumanML3D/new_joint_vecs/000001.npy'
     ckpt_name = 'last'
     cfg = read_config(run_dir)
     seed_everything(cfg.seed)
